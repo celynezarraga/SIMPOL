@@ -30,9 +30,12 @@ public class simpol extends JPanel{
 	DefaultTableModel lexemeTable;
 	JTextArea inputText;
 	JTextArea consoleText;
+	JTable table1;
+	JTable table2;
 	Boolean hasError = false;
 	Boolean variableStart = false;
 	Boolean codeStart = false;
+	int codeIndex;
 
 	HashMap<String,String> reservedWords = new HashMap<String,String>();
 	HashMap<String,String> variablesTypes = new HashMap<String,String>();
@@ -100,9 +103,11 @@ public class simpol extends JPanel{
 		reservedWords.put("INT", "Data Type");
 		reservedWords.put("BLN", "Data Type");
 		reservedWords.put("STG", "Data Type");
+		reservedWords.put("code", "Start of Code Segment");
 		reservedWords.put("PRT", "Print Operator");
 		reservedWords.put("ASK", "Ask Operator");
 		reservedWords.put("PUT", "Assignment Operator");
+		reservedWords.put("IN", "Assignment Operator");
 		reservedWords.put("ADD", "Arithmetic Operator");
 		reservedWords.put("SUB", "Arithmetic Operator");
 		reservedWords.put("MUL", "Arithmetic Operator");
@@ -115,12 +120,13 @@ public class simpol extends JPanel{
 		reservedWords.put("EQL", "Numeric Predicate");
 		reservedWords.put("AND", "Logical Operator");
 		reservedWords.put("OHR", "Logical Operator");
-		reservedWords.put("NOT", "Logical Operator");
+		reservedWords.put("NON", "Logical Operator");
 		reservedWords.put("{", "Left Curly Brace");
 		reservedWords.put("}", "Right Curly Brace");
 	}
 	
 	public void interpretInput(){
+		hasError = false;
 		initializeReservedWords();
 		
 		String input = inputText.getText();
@@ -134,7 +140,7 @@ public class simpol extends JPanel{
 					
 					processVariableSegment(segment[0]);
 					if(!hasError){
-//						processCodeSegment(segment[1]);
+						processCodeSegment(segment[1]);
 					}
 				}
 				else{
@@ -170,8 +176,44 @@ public class simpol extends JPanel{
 					
 					if(reservedWords.containsKey(lines[index])){
 						switch(lines[index]){
-							case "INT": 
-							case "BLN": 
+							case "INT": lexemeTable.addRow(new Object[]{lines[index], reservedWords.get(lines[index])});
+										if(!(reservedWords.containsKey(lines[index+1])) && !(variablesTypes.containsKey(lines[index+1]))){
+											lexemeTable.addRow(new Object[]{lines[index+1], "Variable Name"});
+											symbolTable.addRow(new Object[]{lines[index+1], lines[index], "null"});
+											variablesTypes.put(lines[index+1], lines[index]);
+											variablesValues.put(lines[index+1], "null");
+											symbolsInTable.add(lines[index+1]);
+										}
+										else{
+											if(variablesTypes.containsKey(lines[index+1])){
+												print("Error: Variable name already exists ->  ".concat(lines[index+1]));
+											}
+											else{
+												print("Error: Invalid variable name ->  ".concat(lines[index+1]));
+											}
+											hasError = true;
+											return;
+										}
+										break;
+							case "BLN": lexemeTable.addRow(new Object[]{lines[index], reservedWords.get(lines[index])});
+										if(!(reservedWords.containsKey(lines[index+1])) && !(variablesTypes.containsKey(lines[index+1]))){
+											lexemeTable.addRow(new Object[]{lines[index+1], "Variable Name"});
+											symbolTable.addRow(new Object[]{lines[index+1], lines[index], "null"});
+											variablesTypes.put(lines[index+1], lines[index]);
+											variablesValues.put(lines[index+1], "null");
+											symbolsInTable.add(lines[index+1]);
+										}
+										else{
+											if(variablesTypes.containsKey(lines[index+1])){
+												print("Error: Variable name already exists ->  ".concat(lines[index+1]));
+											}
+											else{
+												print("Error: Invalid variable name ->  ".concat(lines[index+1]));
+											}
+											hasError = true;
+											return;
+										}
+										break;
 							case "STG":	lexemeTable.addRow(new Object[]{lines[index], reservedWords.get(lines[index])});
 										if(!(reservedWords.containsKey(lines[index+1])) && !(variablesTypes.containsKey(lines[index+1]))){
 											lexemeTable.addRow(new Object[]{lines[index+1], "Variable Name"});
@@ -228,8 +270,6 @@ public class simpol extends JPanel{
 			hasError = true;
 			return;
 		}
-		
-		print(String.valueOf(lines.length));
 	}
 	
 	public void addLabelsAndContainers(){
@@ -281,7 +321,7 @@ public class simpol extends JPanel{
 		int numRows1 = 0 ;
 		symbolTable = new DefaultTableModel(numRows1, colHeadings1.length);
 		symbolTable.setColumnIdentifiers(colHeadings1);
-		JTable table1 = new JTable(symbolTable);
+		table1 = new JTable(symbolTable);
 
 		table1.setPreferredScrollableViewportSize(new Dimension(450,300));
 		table1.setEnabled(false);
@@ -295,7 +335,7 @@ public class simpol extends JPanel{
 		int numRows2 = 0 ;
 		lexemeTable = new DefaultTableModel(numRows2, colHeadings2.length);
 		lexemeTable.setColumnIdentifiers(colHeadings2);
-		JTable table2 = new JTable(lexemeTable);
+		table2 = new JTable(lexemeTable);
 
 		table2.setPreferredScrollableViewportSize(new Dimension(450,300));
 		table2.setEnabled(false);
@@ -307,7 +347,19 @@ public class simpol extends JPanel{
 		
 		ActionListener exec = new ActionListener(){
 			public void actionPerformed(ActionEvent e){
-		       	interpretInput();
+				for (int i = symbolTable.getRowCount() - 1; i > -1; i--){
+			        symbolTable.removeRow(i);
+			    }
+				for (int i = lexemeTable.getRowCount() - 1; i > -1; i--){
+					lexemeTable.removeRow(i);
+			    }
+				
+				reservedWords.clear();
+				variablesTypes.clear();
+				variablesValues.clear();
+				symbolsInTable.clear();
+				
+				interpretInput();
 		    }
 		};
 		
@@ -345,8 +397,2389 @@ public class simpol extends JPanel{
 	}
 
 	public void processCodeSegment(String codeSegment){
-		String[] lines = codeSegment.split("\\s");
+		String[] lines = codeSegment.trim().split("\\s+");
+		int x;
+		Boolean temp;
 		
-		print(String.valueOf(lines.length));
+		if(lines[0].equals("code") && codeStart==false){
+			lexemeTable.addRow(new Object[]{lines[0], reservedWords.get(lines[0])});
+			
+			if(lines[1].equals("{")){
+				lexemeTable.addRow(new Object[]{lines[1], reservedWords.get(lines[1])});
+				
+				codeIndex = 2;
+				while((codeIndex<lines.length) && !(lines[codeIndex].equals("}")) && !(hasError)){
+					if(reservedWords.containsKey(lines[codeIndex])){
+						switch(lines[codeIndex]){
+							case "PRT": printingOperation(lines);
+										break;
+							case "ASK": scanningOperation(lines);
+										break;
+							case "PUT": assignOperation(lines);
+										break;
+							case "ADD": x = add(lines);
+										break;
+							case "SUB": x = subtract(lines);
+										break;
+							case "MUL": x = multiply(lines);
+										break;
+							case "DIV": x = divide(lines);
+										break;
+							case "MOD": x = modulo(lines);
+										break;
+							 case "GRT": temp = greaterThan(lines);
+							 			break;
+							 case "GRE": temp = greaterThanEqual(lines);
+							 			break;
+							 case "LET": temp = lessThan(lines);
+							 			break;
+							 case "LEE": temp = lessThanEqual(lines);
+							 			break;
+							 case "EQL": temp = equalOperation(lines);
+							 			break;
+							 case "AND": temp = andOperation(lines);
+							 			break;
+							 case "OHR": temp = orOperation(lines);
+							 			break; 
+							 case "NON": temp = notOperation(lines);
+										break;
+							default: print("Error: Invalid Operator!");
+									 hasError = true;
+									 return;
+						}
+					}
+					else{
+						print("Error: Invalid Operator!");
+						hasError = true;
+						return;
+					}
+				}
+				if(lines[codeIndex].equals("}")){
+					lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				}
+				else{
+					print("Error: No right curly brace found to end code segment properly.");
+					hasError = true;
+					return;
+				}
+			}
+			else{
+				print("Error: No left curly brace found after start of code segment.");
+				hasError = true;
+				return;
+			}
+		}
+		else{
+			if(codeStart){
+				print("Error: Multiple start of code segment found.");
+			}
+			else{
+				print("Error: No start of code segment found.");
+			}
+			hasError = true;
+			return;
+		}
+	}
+
+	//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+	public void assignOperation(String[] lines){
+		if(!hasError){
+			if(lines[codeIndex].equals("PUT")){
+				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				codeIndex++;
+
+				while((lines[codeIndex].equals("IN")) && (codeIndex<lines.length)){
+				//compute or get value to assign!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+				}
+				if(lines[codeIndex].equals("IN")){
+					lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+					codeIndex++;
+					if((codeIndex<lines.length) && (variablesTypes.containsKey(lines[codeIndex]))){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+						//assign value!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+						codeIndex++;
+					}
+					else{
+						if(!variablesTypes.containsKey(lines[codeIndex])){
+							print("Error: Variable name '".concat(lines[codeIndex] + "' was not declared."));
+						}
+						else{
+							print("Error: No variable found where value will be assigned.");
+						}
+						hasError = true;
+						return;	
+					}
+				}
+				else{
+					hasError = true;
+					print("Error: No 'IN' found after 'PUT' operator.");
+				}
+			}
+		}
+		return;
+	}
+
+	public void scanningOperation(String[] lines){
+		String dialogMessage;
+		String value;
+		if(!hasError){
+			if(lines[codeIndex].equals("ASK")){
+				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				codeIndex++;
+
+				if((codeIndex<lines.length) && (variablesTypes.containsKey(lines[codeIndex]))){
+					lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+
+					switch(variablesTypes.get(lines[codeIndex])){
+						case "INT": dialogMessage = "Enter value to be assigned to ".concat("variable" + lines[codeIndex] + "(Integer) :");
+									value= JOptionPane.showInputDialog(dialogMessage);
+									if(value.matches("-?\\d+(\\.\\d+)?")){
+										int inputValue = Integer.parseInt(value);
+										variablesValues.put(lines[codeIndex],String.valueOf(inputValue));
+										table1.getModel().setValueAt(String.valueOf(inputValue), symbolsInTable.indexOf(lines[codeIndex]), 2);
+									}
+									else{
+										print("Error: Invalid input.");
+										hasError = true;
+										return;
+									}
+									codeIndex++;
+									break;
+						case "BLN": dialogMessage = "Enter value to be assigned to ".concat("variable" + lines[codeIndex] + "(Boolean) :");
+									value= JOptionPane.showInputDialog(dialogMessage);
+									if((value.equals("true")) || (value.equals("false"))){
+										variablesValues.put(lines[codeIndex],value);
+										symbolTable.setValueAt(value, symbolsInTable.indexOf(lines[codeIndex]), 2);
+									}
+									else{
+										print("Error: Invalid input.");
+										hasError = true;
+										return;
+									}
+									codeIndex++;
+									break;
+						case "STG": dialogMessage = "Enter value to be assigned to ".concat("variable" + lines[codeIndex] + "(String) :");
+									value= JOptionPane.showInputDialog(dialogMessage);
+									if(value.matches("^\\$.*\\$$")){
+										variablesValues.remove(lines[codeIndex]);
+										variablesValues.put(lines[codeIndex],value);
+										symbolTable.setValueAt(value, symbolsInTable.indexOf(lines[codeIndex]), 2);
+									}
+									else{
+										print("Error: Invalid input.");
+										hasError = true;
+										return;
+									}
+									codeIndex++;
+									break;
+						default:	break;
+					}
+				}
+				else{
+					if(!variablesTypes.containsKey(lines[codeIndex])){
+						print("Error: Variable name '".concat(lines[codeIndex] + "' was not declared."));
+					}
+					else{
+						print("Error: No variable found where value will be assigned.");
+					}
+					hasError = true;
+					return;	
+				}
+			}
+		}
+		return;
+
+	}
+
+	//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	public void printingOperation(String[] lines){
+		if(!hasError){	
+			if(lines[codeIndex].equals("PRT")){
+				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				codeIndex++;
+
+				if((codeIndex<lines.length) && (variablesTypes.containsKey(lines[codeIndex]))){
+					lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+					
+					switch(variablesTypes.get(lines[codeIndex])){
+						case "INT": print(variablesValues.get(lines[codeIndex]));
+									codeIndex++;
+									break;
+						case "BLN": print(variablesValues.get(lines[codeIndex]));
+									codeIndex++;
+									break;
+						case "STG": String toPrint = variablesValues.get(lines[codeIndex]);
+									print(toPrint.substring(1, toPrint.length()-1));
+									codeIndex++;
+									break;
+						default:	break;
+					}
+				}
+				else{
+					if(lines[codeIndex].matches("^\\$.*\\$$")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "String"});
+						//string
+						String toPrint = lines[codeIndex].substring(1, lines[codeIndex].length()-1);
+						print(toPrint);
+					}
+					else if(reservedWords.containsKey(lines[codeIndex])){
+						//operation
+						int x=0;
+						
+						switch(lines[codeIndex]){
+							case "ADD": x = add(lines);
+										break;
+							case "SUB": x = subtract(lines);
+										break;
+							case "MUL": x = multiply(lines);
+										break;
+							case "DIV": x = divide(lines);
+										break;
+							case "MOD": x = modulo(lines);
+										break;
+						// case "GRT": x = greaterThan(lines);
+						// 			break;
+						// case "GRE": x = greaterThanEqual(lines);
+						// 			break;
+						// case "LET": x = lessThan(lines);
+						// 			break;
+						// case "LEE": x = lessThanEqual(lines);
+						// 			break;
+						// case "EQL": x = equalOperation(lines);
+						// 			break;
+						// case "AND": x = andOperation(lines);
+						// 			break;
+						// case "OHR": x = orOperation(lines);
+						// 			break; 
+						// case "NON": x = notOperation(lines);
+//									break;
+							default: print("Error: Invalid Operator!");
+									 hasError = true;
+									 return;
+						}
+						//arithmetic
+						//logical
+						print(String.valueOf(x));
+					}
+					else{
+						print("Error: Invalid argument in PRT operation.");
+					}
+					hasError = true;
+					return;	
+				}
+			}
+		}
+		return;
+
+	}
+
+	public int add(String[] lines){
+		int value = 0;
+		int operand1 = 0;
+		int operand2 = 0;
+
+		if(!hasError){
+			if(lines[codeIndex].equals("ADD")){
+				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				codeIndex++;
+
+				if((codeIndex<lines.length) ){
+					if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+						operand1 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+						codeIndex++;
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for ADD operation.");
+								hasError = true;
+							}	
+						}
+					}
+					else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+						operand1 = Integer.parseInt(lines[codeIndex]);
+						codeIndex++;
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for ADD operation.");
+								hasError = true;
+							}	
+						}
+					}
+					else if(reservedWords.containsKey(lines[codeIndex])){
+						switch(lines[codeIndex]){
+							case "ADD": operand1 = add(lines);
+										break;
+							case "SUB": operand1 = subtract(lines);
+										break;
+							case "MUL": operand1 = multiply(lines);
+										break;
+							case "DIV": operand1 = divide(lines);
+										break;
+							case "MOD": operand1 = modulo(lines);
+										break;
+							default: print("Error: Invalid Operator!");
+									 hasError = true;
+									 return value;
+						}
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for ADD operation.");
+								hasError = true;
+							}	
+						}
+					}
+					else{
+						print("Error: Invalid arguments for ADD operation.");
+						hasError = true;
+					}	
+				}
+				else{
+					print("Error: Invalid arguments for ADD operation.");
+					hasError = true;
+				}
+			}
+		}
+
+		value = operand1 + operand2;
+		return value;
+	}
+
+	public int subtract(String[] lines){
+		int value = 0;
+		int operand1 = 0;
+		int operand2 = 0;
+
+		if(!hasError){
+			if(lines[codeIndex].equals("ADD")){
+				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				codeIndex++;
+
+				if((codeIndex<lines.length) ){
+					if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+						operand1 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+						codeIndex++;
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for SUB operation.");
+								hasError = true;
+							}	
+						}
+					}
+					else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+						operand1 = Integer.parseInt(lines[codeIndex]);
+						codeIndex++;
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for SUB operation.");
+								hasError = true;
+							}	
+						}
+					}
+					else if(reservedWords.containsKey(lines[codeIndex])){
+						switch(lines[codeIndex]){
+							case "ADD": operand1 = add(lines);
+										break;
+							case "SUB": operand1 = subtract(lines);
+										break;
+							case "MUL": operand1 = multiply(lines);
+										break;
+							case "DIV": operand1 = divide(lines);
+										break;
+							case "MOD": operand1 = modulo(lines);
+										break;
+							default: print("Error: Invalid Operator!");
+									 hasError = true;
+									 return value;
+						}
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for SUB operation.");
+								hasError = true;
+							}	
+						}
+					}
+					else{
+						print("Error: Invalid arguments for SUB operation.");
+						hasError = true;
+					}	
+				}
+				else{
+					print("Error: Invalid arguments for SUB operation.");
+					hasError = true;
+				}
+			}
+		}
+
+		value = operand1 - operand2;
+		return value;
+	}
+
+	public int multiply(String[] lines){
+		int value = 0;
+		int operand1 = 0;
+		int operand2 = 0;
+
+		if(!hasError){
+			if(lines[codeIndex].equals("ADD")){
+				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				codeIndex++;
+
+				if((codeIndex<lines.length) ){
+					if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+						operand1 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+						codeIndex++;
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for MUL operation.");
+								hasError = true;
+							}	
+						}
+					}
+					else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+						operand1 = Integer.parseInt(lines[codeIndex]);
+						codeIndex++;
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for MUL operation.");
+								hasError = true;
+							}	
+						}
+					}
+					else if(reservedWords.containsKey(lines[codeIndex])){
+						switch(lines[codeIndex]){
+							case "ADD": operand1 = add(lines);
+										break;
+							case "SUB": operand1 = subtract(lines);
+										break;
+							case "MUL": operand1 = multiply(lines);
+										break;
+							case "DIV": operand1 = divide(lines);
+										break;
+							case "MOD": operand1 = modulo(lines);
+										break;
+							default: print("Error: Invalid Operator!");
+									 hasError = true;
+									 return value;
+						}
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for MUL operation.");
+								hasError = true;
+							}	
+						}
+					}
+					else{
+						print("Error: Invalid arguments for MUL operation.");
+						hasError = true;
+					}	
+				}
+				else{
+					print("Error: Invalid arguments for MUL operation.");
+					hasError = true;
+				}
+			}
+		}
+
+		value = operand1 * operand2;
+		return value;
+	}
+
+	public int divide(String[] lines){
+		int value = 0;
+		int operand1 = 0;
+		int operand2 = 0;
+
+		if(!hasError){
+			if(lines[codeIndex].equals("ADD")){
+				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				codeIndex++;
+
+				if((codeIndex<lines.length) ){
+					if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+						operand1 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+						codeIndex++;
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for DIV operation.");
+								hasError = true;
+							}	
+						}
+					}
+					else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+						operand1 = Integer.parseInt(lines[codeIndex]);
+						codeIndex++;
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for DIV operation.");
+								hasError = true;
+							}	
+						}
+					}
+					else if(reservedWords.containsKey(lines[codeIndex])){
+						switch(lines[codeIndex]){
+							case "ADD": operand1 = add(lines);
+										break;
+							case "SUB": operand1 = subtract(lines);
+										break;
+							case "MUL": operand1 = multiply(lines);
+										break;
+							case "DIV": operand1 = divide(lines);
+										break;
+							case "MOD": operand1 = modulo(lines);
+										break;
+							default: print("Error: Invalid Operator!");
+									 hasError = true;
+									 return value;
+						}
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for DIV operation.");
+								hasError = true;
+							}	
+						}
+					}
+					else{
+						print("Error: Invalid arguments for DIV operation.");
+						hasError = true;
+					}	
+				}
+				else{
+					print("Error: Invalid arguments for DIV operation.");
+					hasError = true;
+				}
+			}
+		}
+
+		value = operand1 / operand2;
+		return value;
+	}
+
+	public int modulo(String[] lines){
+		int value = 0;
+		int operand1 = 0;
+		int operand2 = 0;
+
+		if(!hasError){
+			if(lines[codeIndex].equals("ADD")){
+				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				codeIndex++;
+
+				if((codeIndex<lines.length) ){
+					if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+						operand1 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+						codeIndex++;
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for MOD operation.");
+								hasError = true;
+							}	
+						}
+					}
+					else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+						operand1 = Integer.parseInt(lines[codeIndex]);
+						codeIndex++;
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for MOD operation.");
+								hasError = true;
+							}	
+						}
+					}
+					else if(reservedWords.containsKey(lines[codeIndex])){
+						switch(lines[codeIndex]){
+							case "ADD": operand1 = add(lines);
+										break;
+							case "SUB": operand1 = subtract(lines);
+										break;
+							case "MUL": operand1 = multiply(lines);
+										break;
+							case "DIV": operand1 = divide(lines);
+										break;
+							case "MOD": operand1 = modulo(lines);
+										break;
+							default: print("Error: Invalid Operator!");
+									 hasError = true;
+									 return value;
+						}
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for MOD operation.");
+								hasError = true;
+							}	
+						}
+					}
+					else{
+						print("Error: Invalid arguments for MOD operation.");
+						hasError = true;
+					}	
+				}
+				else{
+					print("Error: Invalid arguments for MOD operation.");
+					hasError = true;
+				}
+			}
+		}
+
+		value = operand1 % operand2;
+		return value;
+	}
+	
+	public Boolean greaterThan(String[] lines){
+		Boolean value = false;
+		int operand1 = 0;
+		int operand2 = 0;
+
+		if(!hasError){
+			if(lines[codeIndex].equals("GRT")){
+				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				codeIndex++;
+
+				if((codeIndex<lines.length) ){
+					if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+						operand1 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+						codeIndex++;
+						
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for GRT operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for GRT operation.");
+							hasError = true;
+						}
+					}
+					else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+						operand1 = Integer.parseInt(lines[codeIndex]);
+						codeIndex++;
+						
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for GRT operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for GRT operation.");
+							hasError = true;
+						}
+					}
+					else if(reservedWords.containsKey(lines[codeIndex])){
+						switch(lines[codeIndex]){
+							case "ADD": operand1 = add(lines);
+										break;
+							case "SUB": operand1 = subtract(lines);
+										break;
+							case "MUL": operand1 = multiply(lines);
+										break;
+							case "DIV": operand1 = divide(lines);
+										break;
+							case "MOD": operand1 = modulo(lines);
+										break;
+							default: print("Error: Invalid Operator!");
+									 hasError = true;
+									 return value;
+						}
+						
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for GRT operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for GRT operation.");
+							hasError = true;
+						}
+					}
+					else{
+						print("Error: Invalid arguments for GRT operation.");
+						hasError = true;
+					}	
+				}
+				else{
+					print("Error: Invalid arguments for GRT operation.");
+					hasError = true;
+				}
+			}
+		}
+
+		if(operand1 > operand2){
+			value = true;
+		}else{
+			value = false;
+		}
+		return value;
+	}
+
+	public Boolean greaterThanEqual(String[] lines){
+		Boolean value = false;
+		int operand1 = 0;
+		int operand2 = 0;
+
+		if(!hasError){
+			if(lines[codeIndex].equals("GRE")){
+				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				codeIndex++;
+
+				if((codeIndex<lines.length) ){
+					if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+						operand1 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+						codeIndex++;
+						
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for GRE operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for GRE operation.");
+							hasError = true;
+						}
+					}
+					else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+						operand1 = Integer.parseInt(lines[codeIndex]);
+						codeIndex++;
+						
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for GRE operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for GRE operation.");
+							hasError = true;
+						}
+					}
+					else if(reservedWords.containsKey(lines[codeIndex])){
+						switch(lines[codeIndex]){
+							case "ADD": operand1 = add(lines);
+										break;
+							case "SUB": operand1 = subtract(lines);
+										break;
+							case "MUL": operand1 = multiply(lines);
+										break;
+							case "DIV": operand1 = divide(lines);
+										break;
+							case "MOD": operand1 = modulo(lines);
+										break;
+							default: print("Error: Invalid Operator!");
+									 hasError = true;
+									 return value;
+						}
+						
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for GRE operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for GRE operation.");
+							hasError = true;
+						}
+					}
+					else{
+						print("Error: Invalid arguments for GRE operation.");
+						hasError = true;
+					}	
+				}
+				else{
+					print("Error: Invalid arguments for GRE operation.");
+					hasError = true;
+				}
+			}
+		}
+
+		if(operand1 >= operand2){
+			value = true;
+		}else{
+			value = false;
+		}
+		return value;
+	}
+
+	public Boolean lessThan(String[] lines){
+		Boolean value = false;
+		int operand1 = 0;
+		int operand2 = 0;
+
+		if(!hasError){
+			if(lines[codeIndex].equals("LET")){
+				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				codeIndex++;
+
+				if((codeIndex<lines.length) ){
+					if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+						operand1 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+						codeIndex++;
+						
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for LET operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for LET operation.");
+							hasError = true;
+						}
+					}
+					else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+						operand1 = Integer.parseInt(lines[codeIndex]);
+						codeIndex++;
+						
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for LET operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for LET operation.");
+							hasError = true;
+						}
+					}
+					else if(reservedWords.containsKey(lines[codeIndex])){
+						switch(lines[codeIndex]){
+							case "ADD": operand1 = add(lines);
+										break;
+							case "SUB": operand1 = subtract(lines);
+										break;
+							case "MUL": operand1 = multiply(lines);
+										break;
+							case "DIV": operand1 = divide(lines);
+										break;
+							case "MOD": operand1 = modulo(lines);
+										break;
+							default: print("Error: Invalid Operator!");
+									 hasError = true;
+									 return value;
+						}
+						
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for LET operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for LET operation.");
+							hasError = true;
+						}
+					}
+					else{
+						print("Error: Invalid arguments for LET operation.");
+						hasError = true;
+					}	
+				}
+				else{
+					print("Error: Invalid arguments for LET operation.");
+					hasError = true;
+				}
+			}
+		}
+
+		if(operand1 < operand2){
+			value = true;
+		}else{
+			value = false;
+		}
+		return value;
+	}
+
+	public Boolean lessThanEqual(String[] lines){
+		Boolean value = false;
+		int operand1 = 0;
+		int operand2 = 0;
+
+		if(!hasError){
+			if(lines[codeIndex].equals("LEE")){
+				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				codeIndex++;
+
+				if((codeIndex<lines.length) ){
+					if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+						operand1 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+						codeIndex++;
+						
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for LEE operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for LEE operation.");
+							hasError = true;
+						}
+					}
+					else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+						operand1 = Integer.parseInt(lines[codeIndex]);
+						codeIndex++;
+						
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for LEE operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for LEE operation.");
+							hasError = true;
+						}
+					}
+					else if(reservedWords.containsKey(lines[codeIndex])){
+						switch(lines[codeIndex]){
+							case "ADD": operand1 = add(lines);
+										break;
+							case "SUB": operand1 = subtract(lines);
+										break;
+							case "MUL": operand1 = multiply(lines);
+										break;
+							case "DIV": operand1 = divide(lines);
+										break;
+							case "MOD": operand1 = modulo(lines);
+										break;
+							default: print("Error: Invalid Operator!");
+									 hasError = true;
+									 return value;
+						}
+						
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for LEE operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for LEE operation.");
+							hasError = true;
+						}
+					}
+					else{
+						print("Error: Invalid arguments for LEE operation.");
+						hasError = true;
+					}	
+				}
+				else{
+					print("Error: Invalid arguments for LEE operation.");
+					hasError = true;
+				}
+			}
+		}
+
+		if(operand1 <= operand2){
+			value = true;
+		}else{
+			value = false;
+		}
+		return value;
+	}
+
+	public Boolean equalOperation(String[] lines){
+		Boolean value = false;
+		int operand1 = 0;
+		int operand2 = 0;
+
+		if(!hasError){
+			if(lines[codeIndex].equals("EQL")){
+				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				codeIndex++;
+
+				if((codeIndex<lines.length) ){
+					if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+						operand1 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+						codeIndex++;
+						
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for EQL operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for EQL operation.");
+							hasError = true;
+						}
+					}
+					else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+						operand1 = Integer.parseInt(lines[codeIndex]);
+						codeIndex++;
+						
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for EQL operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for EQL operation.");
+							hasError = true;
+						}
+					}
+					else if(reservedWords.containsKey(lines[codeIndex])){
+						switch(lines[codeIndex]){
+							case "ADD": operand1 = add(lines);
+										break;
+							case "SUB": operand1 = subtract(lines);
+										break;
+							case "MUL": operand1 = multiply(lines);
+										break;
+							case "DIV": operand1 = divide(lines);
+										break;
+							case "MOD": operand1 = modulo(lines);
+										break;
+							default: print("Error: Invalid Operator!");
+									 hasError = true;
+									 return value;
+						}
+						
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("INT")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Integer.parseInt(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+							}
+							else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Integer.parseInt(lines[codeIndex]);
+								codeIndex++;
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "ADD": operand2 = add(lines);
+												break;
+									case "SUB": operand2 = subtract(lines);
+												break;
+									case "MUL": operand2 = multiply(lines);
+												break;
+									case "DIV": operand2 = divide(lines);
+												break;
+									case "MOD": operand2 = modulo(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for EQL operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for EQL operation.");
+							hasError = true;
+						}
+					}
+					else{
+						print("Error: Invalid arguments for EQL operation.");
+						hasError = true;
+					}	
+				}
+				else{
+					print("Error: Invalid arguments for EQL operation.");
+					hasError = true;
+				}
+			}
+		}
+
+		if(operand1 == operand2){
+			value = true;
+		}else{
+			value = false;
+		}
+		return value;
+	}
+
+	public Boolean andOperation(String[] lines){
+		Boolean value = false;
+		Boolean operand1 = false;
+		Boolean operand2 = false;
+
+		if(!hasError){
+			if(lines[codeIndex].equals("AND")){
+				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				codeIndex++;
+
+				if((codeIndex<lines.length) ){
+					if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("BLN")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+						operand1 = Boolean.parseBoolean(variablesValues.get(lines[codeIndex]));
+						codeIndex++;
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("BLN")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Boolean.parseBoolean(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+								
+							}
+							else if(lines[codeIndex].equals("true") || lines[codeIndex].equals("false")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Boolean.parseBoolean(lines[codeIndex]);
+								codeIndex++;
+								
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "GRT": operand2 = greaterThan(lines);
+												break;
+									case "GRE": operand2 = greaterThanEqual(lines);
+												break;
+									case "LET": operand2 = lessThan(lines);
+												break;
+									case "LEE": operand2 = lessThanEqual(lines);
+												break;
+									case "EQL": operand2 = equalOperation(lines);
+												break;
+									case "AND": operand2 = andOperation(lines);
+												break;
+									case "OHR": operand2 = orOperation(lines);
+												break;
+									case "NON": operand2 = notOperation(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for AND operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for AND operation.");
+							hasError = true;
+						}
+						
+					}
+					else if(lines[codeIndex].equals("true") || lines[codeIndex].equals("false")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+						operand1 = Boolean.parseBoolean(lines[codeIndex]);
+						codeIndex++;
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("BLN")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Boolean.parseBoolean(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+								
+							}
+							else if(lines[codeIndex].equals("true") || lines[codeIndex].equals("false")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Boolean.parseBoolean(lines[codeIndex]);
+								codeIndex++;
+								
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "GRT": operand2 = greaterThan(lines);
+												break;
+									case "GRE": operand2 = greaterThanEqual(lines);
+												break;
+									case "LET": operand2 = lessThan(lines);
+												break;
+									case "LEE": operand2 = lessThanEqual(lines);
+												break;
+									case "EQL": operand2 = equalOperation(lines);
+												break;
+									case "AND": operand2 = andOperation(lines);
+												break;
+									case "OHR": operand2 = orOperation(lines);
+												break;
+									case "NON": operand2 = notOperation(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for AND operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for AND operation.");
+							hasError = true;
+						}
+						
+					}
+					else if(reservedWords.containsKey(lines[codeIndex])){
+						switch(lines[codeIndex]){
+							case "GRT": operand1 = greaterThan(lines);
+										break;
+							case "GRE": operand1 = greaterThanEqual(lines);
+										break;
+							case "LET": operand1 = lessThan(lines);
+										break;
+							case "LEE": operand1 = lessThanEqual(lines);
+										break;
+							case "EQL": operand1 = equalOperation(lines);
+										break;
+							case "AND": operand1 = andOperation(lines);
+										break;
+							case "OHR": operand1 = orOperation(lines);
+										break;
+							case "NON": operand1 = notOperation(lines);
+										break;
+							default: print("Error: Invalid Operator!");
+									 hasError = true;
+									 return value;
+						}
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("BLN")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Boolean.parseBoolean(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+								
+							}
+							else if(lines[codeIndex].equals("true") || lines[codeIndex].equals("false")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Boolean.parseBoolean(lines[codeIndex]);
+								codeIndex++;
+								
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "GRT": operand2 = greaterThan(lines);
+												break;
+									case "GRE": operand2 = greaterThanEqual(lines);
+												break;
+									case "LET": operand2 = lessThan(lines);
+												break;
+									case "LEE": operand2 = lessThanEqual(lines);
+												break;
+									case "EQL": operand2 = equalOperation(lines);
+												break;
+									case "AND": operand2 = andOperation(lines);
+												break;
+									case "OHR": operand2 = orOperation(lines);
+												break;
+									case "NON": operand2 = notOperation(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for AND operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for AND operation.");
+							hasError = true;
+						}
+					}
+					else{
+						print("Error: Invalid arguments for AND operation.");
+						hasError = true;
+					}	
+				}
+				else{
+					print("Error: Invalid arguments for AND operation.");
+					hasError = true;
+				}
+			}
+		}
+
+		if(operand1 && operand2){
+			value = true;
+		}else{
+			value = false;
+		}
+		return value;
+	}
+
+	public Boolean orOperation(String[] lines){
+		Boolean value = false;
+		Boolean operand1 = false;
+		Boolean operand2 = false;
+
+		if(!hasError){
+			if(lines[codeIndex].equals("OHR")){
+				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				codeIndex++;
+
+				if((codeIndex<lines.length) ){
+					if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("BLN")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+						operand1 = Boolean.parseBoolean(variablesValues.get(lines[codeIndex]));
+						codeIndex++;
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("BLN")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Boolean.parseBoolean(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+								
+							}
+							else if(lines[codeIndex].equals("true") || lines[codeIndex].equals("false")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Boolean.parseBoolean(lines[codeIndex]);
+								codeIndex++;
+								
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "GRT": operand2 = greaterThan(lines);
+												break;
+									case "GRE": operand2 = greaterThanEqual(lines);
+												break;
+									case "LET": operand2 = lessThan(lines);
+												break;
+									case "LEE": operand2 = lessThanEqual(lines);
+												break;
+									case "EQL": operand2 = equalOperation(lines);
+												break;
+									case "AND": operand2 = andOperation(lines);
+												break;
+									case "OHR": operand2 = orOperation(lines);
+												break;
+									case "NON": operand2 = notOperation(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for OHR operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for OHR operation.");
+							hasError = true;
+						}
+						
+					}
+					else if(lines[codeIndex].equals("true") || lines[codeIndex].equals("false")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+						operand1 = Boolean.parseBoolean(lines[codeIndex]);
+						codeIndex++;
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("BLN")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Boolean.parseBoolean(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+								
+							}
+							else if(lines[codeIndex].equals("true") || lines[codeIndex].equals("false")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Boolean.parseBoolean(lines[codeIndex]);
+								codeIndex++;
+								
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "GRT": operand2 = greaterThan(lines);
+												break;
+									case "GRE": operand2 = greaterThanEqual(lines);
+												break;
+									case "LET": operand2 = lessThan(lines);
+												break;
+									case "LEE": operand2 = lessThanEqual(lines);
+												break;
+									case "EQL": operand2 = equalOperation(lines);
+												break;
+									case "AND": operand2 = andOperation(lines);
+												break;
+									case "OHR": operand2 = orOperation(lines);
+												break;
+									case "NON": operand2 = notOperation(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for OHR operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for OHR operation.");
+							hasError = true;
+						}
+						
+					}
+					else if(reservedWords.containsKey(lines[codeIndex])){
+						switch(lines[codeIndex]){
+							case "GRT": operand1 = greaterThan(lines);
+										break;
+							case "GRE": operand1 = greaterThanEqual(lines);
+										break;
+							case "LET": operand1 = lessThan(lines);
+										break;
+							case "LEE": operand1 = lessThanEqual(lines);
+										break;
+							case "EQL": operand1 = equalOperation(lines);
+										break;
+							case "AND": operand1 = andOperation(lines);
+										break;
+							case "OHR": operand1 = orOperation(lines);
+										break;
+							case "NON": operand1 = notOperation(lines);
+										break;
+							default: print("Error: Invalid Operator!");
+									 hasError = true;
+									 return value;
+						}
+
+						if((codeIndex<lines.length) ){
+							if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("BLN")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+								operand2 = Boolean.parseBoolean(variablesValues.get(lines[codeIndex]));
+								codeIndex++;
+								
+							}
+							else if(lines[codeIndex].equals("true") || lines[codeIndex].equals("false")){
+								lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+								operand2 = Boolean.parseBoolean(lines[codeIndex]);
+								codeIndex++;
+								
+							}
+							else if(reservedWords.containsKey(lines[codeIndex])){
+								switch(lines[codeIndex]){
+									case "GRT": operand2 = greaterThan(lines);
+												break;
+									case "GRE": operand2 = greaterThanEqual(lines);
+												break;
+									case "LET": operand2 = lessThan(lines);
+												break;
+									case "LEE": operand2 = lessThanEqual(lines);
+												break;
+									case "EQL": operand2 = equalOperation(lines);
+												break;
+									case "AND": operand2 = andOperation(lines);
+												break;
+									case "OHR": operand2 = orOperation(lines);
+												break;
+									case "NON": operand2 = notOperation(lines);
+												break;
+									default: print("Error: Invalid Operator!");
+											 hasError = true;
+											 return value;
+								}
+							}
+							else{
+								print("Error: Invalid arguments for OHR operation.");
+								hasError = true;
+							}	
+						}
+						else{
+							print("Error: Invalid arguments for OHR operation.");
+							hasError = true;
+						}
+					}
+					else{
+						print("Error: Invalid arguments for OHR operation.");
+						hasError = true;
+					}	
+				}
+				else{
+					print("Error: Invalid arguments for OHR operation.");
+					hasError = true;
+				}
+			}
+		}
+
+		if(operand1 || operand2){
+			value = true;
+		}else{
+			value = false;
+		}
+		return value;
+	}
+
+	public Boolean notOperation(String[] lines){
+		Boolean value = false;
+		Boolean operand1 = false;
+		Boolean operand2 = false;
+
+		if(!hasError){
+			if(lines[codeIndex].equals("NON")){
+				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+				codeIndex++;
+
+				if((codeIndex<lines.length) ){
+					if(variablesTypes.containsKey(lines[codeIndex]) && variablesTypes.get(lines[codeIndex]).equals("BLN")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
+						operand1 = Boolean.parseBoolean(variablesValues.get(lines[codeIndex]));
+						codeIndex++;
+						
+					}
+					else if(lines[codeIndex].equals("true") || lines[codeIndex].equals("false")){
+						lexemeTable.addRow(new Object[]{lines[codeIndex], "Expression/Operand"});
+						operand1 = Boolean.parseBoolean(lines[codeIndex]);
+						codeIndex++;
+						
+					}
+					else if(reservedWords.containsKey(lines[codeIndex])){
+						switch(lines[codeIndex]){
+							case "GRT": operand1 = greaterThan(lines);
+										break;
+							case "GRE": operand1 = greaterThanEqual(lines);
+										break;
+							case "LET": operand1 = lessThan(lines);
+										break;
+							case "LEE": operand1 = lessThanEqual(lines);
+										break;
+							case "EQL": operand1 = equalOperation(lines);
+										break;
+							case "AND": operand1 = andOperation(lines);
+										break;
+							case "OHR": operand1 = orOperation(lines);
+										break;
+							case "NON": operand1 = notOperation(lines);
+										break;
+							default: print("Error: Invalid Operator!");
+									 hasError = true;
+									 return value;
+						}
+					}
+					else{
+						print("Error: Invalid arguments for NON operation.");
+						hasError = true;
+					}	
+				}
+				else{
+					print("Error: Invalid arguments for NON operation.");
+					hasError = true;
+				}
+			}
+		}
+
+		value = !operand1;
+		return value;
 	}
 }
