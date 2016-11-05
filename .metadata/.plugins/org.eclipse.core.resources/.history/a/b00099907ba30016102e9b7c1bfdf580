@@ -1,0 +1,248 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.HashMap;
+import java.io.*;
+import java.lang.Object.*;
+import java.util.*;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionListener;
+import java.awt.event.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.JTable;
+import javax.swing.table.DefaultTableModel;
+
+public class simpol extends JPanel{
+
+	JFrame frame = new JFrame("SIMPOL: Simple Interpreter");
+	
+	Container overallFrame = new Container();
+	Container overall1 = new Container();
+	Container overall1a = new Container();
+	Container overall1b = new Container();
+	Container overall1c = new Container();
+	Container overall2 = new Container();
+	Container overall3a = new Container();
+	Container overall3b = new Container();
+	
+	DefaultTableModel model1;
+	DefaultTableModel model2;
+	JTextArea inputText;
+	JTextArea consoleText;
+
+	HashMap<String,String> reservedWords = new HashMap<String,String>();
+	
+	public simpol(){
+		renderFrame();
+		addLabelsAndContainers();
+		packFrame();
+	}
+
+	public static void main(String[] args){
+		simpol simleInterpreter = new simpol();
+	}
+
+	public void renderFrame(){
+		frame.setSize(new Dimension (1000,700));						//frame
+		frame.setDefaultCloseOperation(frame.EXIT_ON_CLOSE);
+		
+		overallFrame.setPreferredSize(new Dimension(1000, 700));
+		overallFrame.setLayout(new FlowLayout(FlowLayout.CENTER));
+		
+		overall1.setPreferredSize(new Dimension(1000,350));
+		overall1.setLayout(new GridLayout(1,3,2,2));
+		
+		overall2.setPreferredSize(new Dimension(1000,50));
+		overall2.setLayout(new FlowLayout(FlowLayout.CENTER));
+		
+		overall3a.setPreferredSize(new Dimension(1000,25));
+		overall3a.setLayout(new FlowLayout(FlowLayout.LEFT));
+		
+		overall3b.setPreferredSize(new Dimension(1000,375));
+		overall3b.setLayout(new FlowLayout(FlowLayout.CENTER));
+		
+		overall1a.setPreferredSize(new Dimension(300,350));
+		overall1a.setLayout(new FlowLayout(FlowLayout.CENTER));
+		
+		overall1b.setPreferredSize(new Dimension(400,350));
+		overall1b.setLayout(new FlowLayout(FlowLayout.CENTER));
+		
+		overall1c.setPreferredSize(new Dimension(300,350));
+		overall1c.setLayout(new FlowLayout(FlowLayout.CENTER));
+	
+	
+	}
+
+	public void readFile(File fileToRead){
+		try (BufferedReader br = new BufferedReader(new FileReader(fileToRead))) {
+
+			String line;
+															
+			while ((line = br.readLine()) != null) {		//read per line
+				String current = inputText.getText();
+				inputText.setText(current.concat(line + "\n"));
+			}
+
+		} catch (IOException e) {
+				e.printStackTrace();
+		}
+	}
+	
+	public void initializeReservedWords(){
+		reservedWords.put("variable", "Start of Variable Declaration");
+		reservedWords.put("INT", "Data Type");
+		reservedWords.put("BLN", "Data Type");
+		reservedWords.put("STG", "Data Type");
+		reservedWords.put("PRT", "Print Operator");
+		reservedWords.put("ASK", "Ask Operator");
+		reservedWords.put("PUT", "Assignment Operator");
+		reservedWords.put("ADD", "Arithmetic Operator");
+		reservedWords.put("SUB", "Arithmetic Operator");
+		reservedWords.put("MUL", "Arithmetic Operator");
+		reservedWords.put("DIV", "Arithmetic Operator");
+		reservedWords.put("MOD", "Arithmetic Operator");
+		reservedWords.put("GRT", "Numeric Predicate");
+		reservedWords.put("GRE", "Numeric Predicate");
+		reservedWords.put("LET", "Numeric Predicate");
+		reservedWords.put("LEE", "Numeric Predicate");
+		reservedWords.put("EQL", "Numeric Predicate");
+		reservedWords.put("AND", "Logical Operator");
+		reservedWords.put("OHR", "Logical Operator");
+		reservedWords.put("NOT", "Logical Operator");
+	}
+	
+	public void interpretInput(){
+		initializeReservedWords();
+		
+		String[] lines = inputText.getText().split("\n");
+		int bound = -1;
+		
+		for(int i=0; i<lines.length; i++){
+			if(lines[i].contains("}")){
+				bound = i;
+				break;
+			}
+		}
+		print(String.valueOf(bound));
+	}
+	
+	public void print(String toPrint){
+		consoleText.setText(consoleText.getText().concat(toPrint + "\n"));
+	}
+	
+	public void addLabelsAndContainers(){
+		JButton browseFileButton = new JButton("Select file");
+		
+		ActionListener chooseFileButton = new ActionListener(){
+			public void actionPerformed(ActionEvent e){
+		       	JFileChooser chooser= new JFileChooser();
+		       	FileNameExtensionFilter filter = new FileNameExtensionFilter("Text Files", "sim");
+				chooser.setFileFilter(filter);
+
+				int choice = chooser.showOpenDialog(simpol.this);
+				if (choice != JFileChooser.APPROVE_OPTION){
+					System.out.println("File reading cancelled.");
+				}
+				else{
+					File chosenFile = chooser.getSelectedFile();
+					readFile(chosenFile);							//read file	
+		    	}
+		    }
+		};
+
+		browseFileButton.addActionListener(chooseFileButton);
+		overall1a.add(browseFileButton);
+		
+		inputText = new JTextArea(300,275);										//input field
+		inputText.setLineWrap(true);
+		inputText.setWrapStyleWord(true);
+		JScrollPane areaScrollPane = new JScrollPane(inputText);
+		areaScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+		areaScrollPane.setPreferredSize(new Dimension(300, 275));
+		overall1a.add(areaScrollPane);
+		
+		JButton clearButton = new JButton("Clear");
+		
+		ActionListener clearText = new ActionListener(){
+			public void actionPerformed(ActionEvent e){
+		       	inputText.setText("");
+		    }
+		};
+		
+		clearButton.addActionListener(clearText);
+		overall1a.add(clearButton);
+		
+		JLabel symTable_label = new JLabel("SYMBOL TABLE");
+		overall1b.add(symTable_label);
+		
+		String[] colHeadings1 = {"VAR","TYPE","VALUE"};
+		int numRows1 = 0 ;
+		model1 = new DefaultTableModel(numRows1, colHeadings1.length);
+		model1.setColumnIdentifiers(colHeadings1);
+		JTable table1 = new JTable(model1);
+
+		table1.setPreferredScrollableViewportSize(new Dimension(375,300));
+		table1.setEnabled(false);
+		overall1b.add(table1);
+		overall1b.add(new JScrollPane(table1));
+		
+		JLabel lexTable_label = new JLabel("TOKENS/LEXEMES");
+		overall1c.add(lexTable_label);
+		
+		String[] colHeadings2 = {"TOKEN","LEXEME"};
+		int numRows2 = 0 ;
+		model2 = new DefaultTableModel(numRows2, colHeadings2.length);
+		model2.setColumnIdentifiers(colHeadings2);
+		JTable table2 = new JTable(model2);
+
+		table2.setPreferredScrollableViewportSize(new Dimension(275,300));
+		table2.setEnabled(false);
+		overall1c.add(table2);
+		overall1c.add(new JScrollPane(table2));
+		
+		JButton executeButton = new JButton("EXECUTE");
+		executeButton.setPreferredSize(new Dimension(950, 50));
+		
+		ActionListener exec = new ActionListener(){
+			public void actionPerformed(ActionEvent e){
+		       	interpretInput();
+		    }
+		};
+		
+		executeButton.addActionListener(exec);
+		overall2.add(executeButton);
+		
+		JLabel console_label = new JLabel("CONSOLE");
+		overall3a.add(console_label);
+		
+		consoleText = new JTextArea(975,225);
+		consoleText.setEditable(false);
+		consoleText.setLineWrap(true);
+		consoleText.setWrapStyleWord(true);
+		JScrollPane areaScrollPane1 = new JScrollPane(consoleText);
+		areaScrollPane1.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+		areaScrollPane1.setPreferredSize(new Dimension(975, 225));
+		overall3b.add(areaScrollPane1);
+	}
+
+	public void packFrame(){
+		overall1.add(overall1a);
+		overall1.add(overall1b);
+		overall1.add(overall1c);
+		
+		overallFrame.add(overall1);
+		overallFrame.add(overall2);
+		overallFrame.add(overall3a);
+		overallFrame.add(overall3b);
+		
+		frame.getContentPane().setBackground(Color.gray);
+
+		frame.add(overallFrame);
+		frame.pack();
+		frame.setVisible(true);
+	}
+
+}
