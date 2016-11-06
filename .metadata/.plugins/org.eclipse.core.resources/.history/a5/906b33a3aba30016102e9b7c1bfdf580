@@ -131,7 +131,7 @@ public class simpol extends JPanel{
 		
 		String input = inputText.getText();
 		
-		if(input.length() != 0 && !(hasError)){
+		if(input.length() != 0){
 			if(input.contains("}")){
 				String[] segment = new String[2];
 				if((input.indexOf("}")+1) < input.length()){
@@ -145,18 +145,15 @@ public class simpol extends JPanel{
 				}
 				else{
 					print("Error: Incomplete Segments!");
-					hasError = true;
 				}
 				
 			}
 			else{
 				print("Error: No complete segment in code. '}' missing.");
-				hasError = true;
 			}
 		}
 		else{
 			print("Error: Empty Input. Choose a file, or enter your code.");
-			hasError = true;
 		}
 
 	}
@@ -407,7 +404,7 @@ public class simpol extends JPanel{
 		if(lines[0].equals("code") && codeStart==false){
 			lexemeTable.addRow(new Object[]{lines[0], reservedWords.get(lines[0])});
 			
-			if(lines[1].equals("{") && !(hasError)){
+			if(lines[1].equals("{")){
 				lexemeTable.addRow(new Object[]{lines[1], reservedWords.get(lines[1])});
 				
 				codeIndex = 2;
@@ -457,7 +454,7 @@ public class simpol extends JPanel{
 						return;
 					}
 				}
-				if(lines[codeIndex].equals("}") && !(hasError)){
+				if(lines[codeIndex].equals("}")){
 					lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
 				}
 				else{
@@ -484,117 +481,22 @@ public class simpol extends JPanel{
 		}
 	}
 
+	//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
 	public void assignOperation(String[] lines){
 		if(!hasError){
 			if(lines[codeIndex].equals("PUT")){
-				int x = 0;
-				Boolean temp = false;
-				String str = "";
-				int ch = 0;
-
 				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
 				codeIndex++;
 
-				while(!(lines[codeIndex].equals("IN")) && (codeIndex<lines.length)){
-					if(reservedWords.containsKey(lines[codeIndex])){
-						switch(lines[codeIndex]){
-							case "ADD": x = add(lines);
-										ch = 1;
-										break;
-							case "SUB": x = subtract(lines);
-										ch = 1;
-										break;
-							case "MUL": x = multiply(lines);
-										ch = 1;
-										break;
-							case "DIV": x = divide(lines);
-										ch = 1;
-										break;
-							case "MOD": x = modulo(lines);
-										ch = 1;
-										break;
-							 case "GRT": temp = greaterThan(lines);
-							 			ch = 2;
-							 			break;
-							 case "GRE": temp = greaterThanEqual(lines);
-							 			ch = 2;
-							 			break;
-							 case "LET": temp = lessThan(lines);
-							 			ch = 2;
-							 			break;
-							 case "LEE": temp = lessThanEqual(lines);
-							 			ch = 2;
-							 			break;
-							 case "EQL": temp = equalOperation(lines);
-							 			ch = 2;
-							 			break;
-							 case "AND": temp = andOperation(lines);
-							 			ch = 2;
-							 			break;
-							 case "OHR": temp = orOperation(lines);
-							 			ch = 2;
-							 			break; 
-							 case "NON": temp = notOperation(lines);
-							 			ch = 2;
-										break;
-							 default: break;
-						}
-					}
-					else{
-						if(variablesTypes.containsKey(lines[codeIndex])){
-							switch(variablesTypes.get(lines[codeIndex])){
-								case "INT": ch = 1;
-											x = Integer.parseInt(variablesValues.get(lines[codeIndex]));
-											codeIndex++;
-											break;
-								case "BLN": ch = 2;
-											temp = Boolean.parseBoolean(variablesValues.get(lines[codeIndex]));
-											codeIndex++;
-											break;
-								case "STG": ch = 3;
-											str = variablesValues.get(lines[codeIndex]);
-											codeIndex++;
-											break;
-							}
-						}
-						else if(lines[codeIndex].equals("true") || lines[codeIndex].equals("false")){
-							ch = 3;
-							str = variablesValues.get(lines[codeIndex]);
-							codeIndex++;
-						}
-						else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
-							ch = 1;
-							x = Integer.parseInt((lines[codeIndex]));
-							codeIndex++;
-						}
-						else{
-							print("Error: Invalid Operator!");
-							hasError = true;
-							return;
-						}
-						
-					}
+				while((lines[codeIndex].equals("IN")) && (codeIndex<lines.length)){
+				//compute or get value to assign!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 				}
-				if(lines[codeIndex].equals("IN") && !(hasError)){
+				if(lines[codeIndex].equals("IN")){
 					lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
 					codeIndex++;
 					if((codeIndex<lines.length) && (variablesTypes.containsKey(lines[codeIndex]))){
 						lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
-						switch(ch){
-							case 1: variablesValues.put(lines[codeIndex],String.valueOf(x));
-									table1.getModel().setValueAt(String.valueOf(x), symbolsInTable.indexOf(lines[codeIndex]), 2);
-									break;
-							case 2: variablesValues.put(lines[codeIndex],String.valueOf(temp));
-									table1.getModel().setValueAt(String.valueOf(temp), symbolsInTable.indexOf(lines[codeIndex]), 2);
-									break;
-							case 3: variablesValues.put(lines[codeIndex],str);
-									table1.getModel().setValueAt(str, symbolsInTable.indexOf(lines[codeIndex]), 2);
-									break;
-							default: print("Error: Invalid Operator!");
-									 hasError = true;
-									 break;
-						}
-
+						//assign value!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 						codeIndex++;
 					}
 					else{
@@ -609,8 +511,8 @@ public class simpol extends JPanel{
 					}
 				}
 				else{
-					print("Error: No 'IN' found after 'PUT' operator.");
 					hasError = true;
+					print("Error: No 'IN' found after 'PUT' operator.");
 				}
 			}
 		}
@@ -781,9 +683,9 @@ public class simpol extends JPanel{
 					}
 					else{
 						print("Error: Invalid argument in PRT operation.");
-						hasError = true;
-						return;	
 					}
+					hasError = true;
+					return;	
 				}
 			}
 		}

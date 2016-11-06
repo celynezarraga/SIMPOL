@@ -131,7 +131,7 @@ public class simpol extends JPanel{
 		
 		String input = inputText.getText();
 		
-		if(input.length() != 0 && !(hasError)){
+		if(input.length() != 0){
 			if(input.contains("}")){
 				String[] segment = new String[2];
 				if((input.indexOf("}")+1) < input.length()){
@@ -145,18 +145,15 @@ public class simpol extends JPanel{
 				}
 				else{
 					print("Error: Incomplete Segments!");
-					hasError = true;
 				}
 				
 			}
 			else{
 				print("Error: No complete segment in code. '}' missing.");
-				hasError = true;
 			}
 		}
 		else{
 			print("Error: Empty Input. Choose a file, or enter your code.");
-			hasError = true;
 		}
 
 	}
@@ -407,7 +404,7 @@ public class simpol extends JPanel{
 		if(lines[0].equals("code") && codeStart==false){
 			lexemeTable.addRow(new Object[]{lines[0], reservedWords.get(lines[0])});
 			
-			if(lines[1].equals("{") && !(hasError)){
+			if(lines[1].equals("{")){
 				lexemeTable.addRow(new Object[]{lines[1], reservedWords.get(lines[1])});
 				
 				codeIndex = 2;
@@ -457,7 +454,7 @@ public class simpol extends JPanel{
 						return;
 					}
 				}
-				if(lines[codeIndex].equals("}") && !(hasError)){
+				if(lines[codeIndex].equals("}")){
 					lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
 				}
 				else{
@@ -545,27 +542,14 @@ public class simpol extends JPanel{
 							switch(variablesTypes.get(lines[codeIndex])){
 								case "INT": ch = 1;
 											x = Integer.parseInt(variablesValues.get(lines[codeIndex]));
-											codeIndex++;
 											break;
 								case "BLN": ch = 2;
 											temp = Boolean.parseBoolean(variablesValues.get(lines[codeIndex]));
-											codeIndex++;
 											break;
 								case "STG": ch = 3;
 											str = variablesValues.get(lines[codeIndex]);
-											codeIndex++;
 											break;
 							}
-						}
-						else if(lines[codeIndex].equals("true") || lines[codeIndex].equals("false")){
-							ch = 3;
-							str = variablesValues.get(lines[codeIndex]);
-							codeIndex++;
-						}
-						else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
-							ch = 1;
-							x = Integer.parseInt((lines[codeIndex]));
-							codeIndex++;
 						}
 						else{
 							print("Error: Invalid Operator!");
@@ -609,8 +593,8 @@ public class simpol extends JPanel{
 					}
 				}
 				else{
-					print("Error: No 'IN' found after 'PUT' operator.");
 					hasError = true;
+					print("Error: No 'IN' found after 'PUT' operator.");
 				}
 			}
 		}
@@ -781,9 +765,9 @@ public class simpol extends JPanel{
 					}
 					else{
 						print("Error: Invalid argument in PRT operation.");
-						hasError = true;
-						return;	
 					}
+					hasError = true;
+					return;	
 				}
 			}
 		}
