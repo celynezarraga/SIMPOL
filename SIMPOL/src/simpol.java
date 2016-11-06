@@ -162,7 +162,7 @@ public class simpol extends JPanel{
 	}
 	
 	public void print(String toPrint){
-		consoleText.setText(consoleText.getText().concat(toPrint + "\n"));
+		consoleText.setText(consoleText.getText().concat("SYSTEM_I/O: " + toPrint + "\n"));
 	}
 	
 	public void processVariableSegment(String varSegment){
@@ -170,6 +170,8 @@ public class simpol extends JPanel{
 		
 		if(lines[0].equals("variable") && variableStart==false){
 			lexemeTable.addRow(new Object[]{lines[0], reservedWords.get(lines[0])});
+
+			print("  == VARIABLE DECLARATION STARTED ==  ");
 			
 			if(lines[1].equals("{")){
 				lexemeTable.addRow(new Object[]{lines[1], reservedWords.get(lines[1])});
@@ -250,6 +252,7 @@ public class simpol extends JPanel{
 				}
 				if(lines[index].equals("}")){
 					lexemeTable.addRow(new Object[]{lines[index], reservedWords.get(lines[index])});
+					print("  == VARIABLE DECLARATION ENDED ==  ");
 				}
 				else{
 					print("Error: No right curly brace found to end variable declaration segment properly.");
@@ -406,6 +409,8 @@ public class simpol extends JPanel{
 		
 		if(lines[0].equals("code") && codeStart==false){
 			lexemeTable.addRow(new Object[]{lines[0], reservedWords.get(lines[0])});
+
+			print("  == PROGRAM STARTED ==  ");
 			
 			if(lines[1].equals("{") && !(hasError)){
 				lexemeTable.addRow(new Object[]{lines[1], reservedWords.get(lines[1])});
@@ -459,6 +464,7 @@ public class simpol extends JPanel{
 				}
 				if(lines[codeIndex].equals("}") && !(hasError)){
 					lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
+					print("  == PROGRAM ENDED WITH NO ERRORS ==  ");
 				}
 				else{
 					print("Error: No right curly brace found to end code segment properly.");
@@ -559,13 +565,39 @@ public class simpol extends JPanel{
 						}
 						else if(lines[codeIndex].equals("true") || lines[codeIndex].equals("false")){
 							ch = 3;
-							str = variablesValues.get(lines[codeIndex]);
+							str = lines[codeIndex];
 							codeIndex++;
 						}
 						else if(lines[codeIndex].matches("-?\\d+(\\.\\d+)?")){
 							ch = 1;
 							x = Integer.parseInt((lines[codeIndex]));
 							codeIndex++;
+						}
+						else if(lines[codeIndex].matches("^\\$.*\\$$")){
+							ch = 3;
+							str = lines[codeIndex].substring(1, lines[codeIndex].length()-1);
+							codeIndex++;
+						}
+						else if(lines[codeIndex].matches("^\\$.*")){
+							String strFound = lines[codeIndex].substring(1);
+							codeIndex++;
+							
+							while((codeIndex < lines.length) && (!(lines[codeIndex].matches("^.*\\$$")))){
+								strFound = strFound.concat(" " + lines[codeIndex] + " ");
+								codeIndex++;
+							}
+
+							if(lines[codeIndex].matches("^.*\\$$") && (codeIndex < lines.length)){
+								strFound = strFound.concat(" " + lines[codeIndex].substring(0,lines[codeIndex].length()-1) + " ");
+								str = strFound;
+								ch = 3;
+								codeIndex++;
+							}
+							else{
+								print("Error: '$' as ending character of string not found.");
+								hasError = true;
+								return;
+							}
 						}
 						else{
 							print("Error: Invalid Operator!");
@@ -582,13 +614,16 @@ public class simpol extends JPanel{
 						lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
 						switch(ch){
 							case 1: variablesValues.put(lines[codeIndex],String.valueOf(x));
-									table1.getModel().setValueAt(String.valueOf(x), symbolsInTable.indexOf(lines[codeIndex]), 2);
+									lexemeTable.addRow(new Object[]{String.valueOf(x), "Value"});
+									symbolTable.setValueAt(String.valueOf(x), symbolsInTable.indexOf(lines[codeIndex]), 2);
 									break;
 							case 2: variablesValues.put(lines[codeIndex],String.valueOf(temp));
-									table1.getModel().setValueAt(String.valueOf(temp), symbolsInTable.indexOf(lines[codeIndex]), 2);
+									lexemeTable.addRow(new Object[]{String.valueOf(temp), "Value"});
+									symbolTable.setValueAt(String.valueOf(temp), symbolsInTable.indexOf(lines[codeIndex]), 2);
 									break;
 							case 3: variablesValues.put(lines[codeIndex],str);
-									table1.getModel().setValueAt(str, symbolsInTable.indexOf(lines[codeIndex]), 2);
+									lexemeTable.addRow(new Object[]{String.valueOf(str), "Value"});
+									symbolTable.setValueAt(str, symbolsInTable.indexOf(lines[codeIndex]), 2);
 									break;
 							default: print("Error: Invalid Operator!");
 									 hasError = true;
@@ -619,7 +654,7 @@ public class simpol extends JPanel{
 
 	public void scanningOperation(String[] lines){
 		String dialogMessage;
-		String value;
+		String value = "";
 		if(!hasError){
 			if(lines[codeIndex].equals("ASK")){
 				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
@@ -629,8 +664,10 @@ public class simpol extends JPanel{
 					lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
 
 					switch(variablesTypes.get(lines[codeIndex])){
-						case "INT": dialogMessage = "Enter value to be assigned to ".concat("variable" + lines[codeIndex] + "(Integer) :");
-									value= JOptionPane.showInputDialog(dialogMessage);
+						case "INT": dialogMessage = "Enter value to be assigned to ".concat(lines[codeIndex] + " (Integer) :");
+									while(value == null || value.isEmpty() || value.length()==0){
+								        value= JOptionPane.showInputDialog(dialogMessage);
+								    }
 									if(value.matches("-?\\d+(\\.\\d+)?")){
 										int inputValue = Integer.parseInt(value);
 										variablesValues.put(lines[codeIndex],String.valueOf(inputValue));
@@ -643,8 +680,10 @@ public class simpol extends JPanel{
 									}
 									codeIndex++;
 									break;
-						case "BLN": dialogMessage = "Enter value to be assigned to ".concat("variable" + lines[codeIndex] + "(Boolean) :");
-									value= JOptionPane.showInputDialog(dialogMessage);
+						case "BLN": dialogMessage = "Enter value to be assigned to ".concat(lines[codeIndex] + " (Boolean) :");
+									while(value == null || value.isEmpty() || value.length()==0){
+								        value= JOptionPane.showInputDialog(dialogMessage);
+								    }
 									if((value.equals("true")) || (value.equals("false"))){
 										variablesValues.put(lines[codeIndex],value);
 										symbolTable.setValueAt(value, symbolsInTable.indexOf(lines[codeIndex]), 2);
@@ -656,10 +695,12 @@ public class simpol extends JPanel{
 									}
 									codeIndex++;
 									break;
-						case "STG": dialogMessage = "Enter value to be assigned to ".concat("variable" + lines[codeIndex] + "(String) :");
-									value= JOptionPane.showInputDialog(dialogMessage);
+						case "STG": dialogMessage = "Enter value to be assigned to ".concat(lines[codeIndex] + " (String) :");
+									while(value == null || value.isEmpty() || value.length()==0){
+								        value= JOptionPane.showInputDialog(dialogMessage);
+								    }
 									if(value.matches("^\\$.*\\$$")){
-										variablesValues.remove(lines[codeIndex]);
+										value = value.substring(1, value.length()-1);
 										variablesValues.put(lines[codeIndex],value);
 										symbolTable.setValueAt(value, symbolsInTable.indexOf(lines[codeIndex]), 2);
 									}
@@ -689,14 +730,14 @@ public class simpol extends JPanel{
 
 	}
 
-	//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	public void printingOperation(String[] lines){
+		int ch = 0;
 		if(!hasError){	
 			if(lines[codeIndex].equals("PRT")){
 				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
 				codeIndex++;
 
-				if((codeIndex<lines.length) && (variablesTypes.containsKey(lines[codeIndex]))){
+				if((codeIndex<lines.length) && (variablesTypes.containsKey(lines[codeIndex]))){	
 					lexemeTable.addRow(new Object[]{lines[codeIndex], "Variable"});
 					
 					switch(variablesTypes.get(lines[codeIndex])){
@@ -706,8 +747,9 @@ public class simpol extends JPanel{
 						case "BLN": print(variablesValues.get(lines[codeIndex]));
 									codeIndex++;
 									break;
-						case "STG": String toPrint = variablesValues.get(lines[codeIndex]);
-									print(toPrint.substring(1, toPrint.length()-1));
+						case "STG": print(variablesValues.get(lines[codeIndex]));
+									// String toPrint = variablesValues.get(lines[codeIndex]);
+									// print(toPrint.substring(1, toPrint.length()-1));
 									codeIndex++;
 									break;
 						default:	break;
@@ -715,21 +757,28 @@ public class simpol extends JPanel{
 				}
 				else{
 					if(lines[codeIndex].matches("^\\$.*\\$$")){
-						lexemeTable.addRow(new Object[]{lines[codeIndex], "String"});
 						String toPrint = lines[codeIndex].substring(1, lines[codeIndex].length()-1);
 						print(toPrint);
+						lexemeTable.addRow(new Object[]{toPrint, "String"});
+						codeIndex++;
+						return;
 					}
 					else if(lines[codeIndex].matches("^\\$.*")){
-						lexemeTable.addRow(new Object[]{lines[codeIndex], "String"});
 						String toPrint = lines[codeIndex].substring(1);
 						codeIndex++;
-						while((codeIndex < lines.length) && (!(lines[codeIndex].contains("\\$")))){
+						
+						while((codeIndex < lines.length) && (!(lines[codeIndex].matches("^.*\\$$")))){
 							toPrint = toPrint.concat(" " + lines[codeIndex] + " ");
 							codeIndex++;
 						}
+
 						if(lines[codeIndex].matches("^.*\\$$") && (codeIndex < lines.length)){
 							toPrint = toPrint.concat(" " + lines[codeIndex].substring(0,lines[codeIndex].length()-1) + " ");
 							print(toPrint);
+
+							lexemeTable.addRow(new Object[]{toPrint, "String"});
+							codeIndex++;
+							return;
 						}
 						else{
 							print("Error: '$' as ending character of string not found.");
@@ -743,40 +792,57 @@ public class simpol extends JPanel{
 						
 						switch(lines[codeIndex]){
 							case "ADD": x = add(lines);
+										ch = 1;
 										break;
 							case "SUB": x = subtract(lines);
+										ch = 1;
 										break;
 							case "MUL": x = multiply(lines);
+										ch = 1;
 										break;
 							case "DIV": x = divide(lines);
+										ch = 1;
 										break;
 							case "MOD": x = modulo(lines);
+										ch = 1;
 										break;
 							case "GRT": temp = greaterThan(lines);
+										ch = 2;
 										break;
 							case "GRE": temp = greaterThanEqual(lines);
+										ch = 2;
 										break;
 							case "LET": temp = lessThan(lines);
+										ch = 2;
 										break;
 							case "LEE": temp = lessThanEqual(lines);
+										ch = 2;
 										break;
 							case "EQL": temp = equalOperation(lines);
+										ch = 2;
 										break;
 							case "AND": temp = andOperation(lines);
+										ch = 2;
 										break;
 							case "OHR": temp = orOperation(lines);
+										ch = 2;
 										break; 
 							case "NON": temp = notOperation(lines);
+										ch = 2;
 										break;
 							default: print("Error: Invalid Operator!");
 									 hasError = true;
 									 return;
 						}
-						if(temp!=null){
+
+						if(ch==2){
 							print(String.valueOf(temp));
 						}
-						else{
+						else if(ch==1){
 							print(String.valueOf(x));
+						}
+						else{
+							print("Error found in PRT Operation.");
 						}
 					}
 					else{
@@ -953,7 +1019,7 @@ public class simpol extends JPanel{
 		int operand2 = 0;
 
 		if(!hasError){
-			if(lines[codeIndex].equals("ADD")){
+			if(lines[codeIndex].equals("SUB")){
 				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
 				codeIndex++;
 
@@ -1109,7 +1175,7 @@ public class simpol extends JPanel{
 		int operand2 = 0;
 
 		if(!hasError){
-			if(lines[codeIndex].equals("ADD")){
+			if(lines[codeIndex].equals("MUL")){
 				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
 				codeIndex++;
 
@@ -1265,7 +1331,7 @@ public class simpol extends JPanel{
 		int operand2 = 0;
 
 		if(!hasError){
-			if(lines[codeIndex].equals("ADD")){
+			if(lines[codeIndex].equals("DIV")){
 				lexemeTable.addRow(new Object[]{lines[codeIndex], reservedWords.get(lines[codeIndex])});
 				codeIndex++;
 
